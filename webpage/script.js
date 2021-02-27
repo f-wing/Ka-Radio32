@@ -184,6 +184,10 @@ function validOutput() {
     alert("System reboot.");
 }
 
+function storeSensorSettings(){
+	sensor(1); // store data into eeprom
+}
+
 function scrollTo(to, duration) {
     if (duration < 0) return;
     var scrollTop = document.body.scrollTop + document.documentElement.scrollTop;
@@ -619,6 +623,26 @@ function hardware(valid) {
 	+"&coutput=" + i
 	+"&");
 }
+function sensor(valid) {
+	xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function() {
+	 	if (xhr.readyState == 4 && xhr.status == 200) {	//get stored thresholds and display them
+	 		var arr = JSON.parse(xhr.responseText);
+	 		document.getElementById('switchonthres').value = arr["switchonthres"];
+	 		document.getElementById('switchoffthres').value = arr["switchoffthres"];
+	 	}
+	 }
+	// var temp1 = document.getElementById('switchonthres').value;
+	// var temp2 = document.getElementById('switchoffthres').value;
+
+	// send data to webserver.c
+	xhr.open("POST","sensor",false);
+	xhr.setRequestHeader(content,ctype);
+	xhr.send("valid=" + valid 
+	+"&switchonthres=" + document.getElementById('switchonthres').value
+	+"&switchoffthres=" + document.getElementById('switchoffthres').value
+	+"&");
+}
 function instantPlay() {
 	var curl;
 	try{
@@ -851,6 +875,15 @@ function stopStation() {
 		xhr.send();
 	} catch(e){console.log("error"+e);}
 }
+function readSensorADC(){
+	try{
+		xhr = new XMLHttpRequest();
+		xhr.open("POST","readadc",false);
+		xhr.setRequestHeader(content,ctype);
+		xhr.send();
+	} catch(e){console.log("error"+e);}
+}
+
 function saveSoundSettings() {
 	xhr = new XMLHttpRequest();
 	xhr.open("POST","sound",false);
@@ -1432,6 +1465,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	document.getElementById("tab1").addEventListener("click", function() {
 			if (stchanged) stChanged();
 			refresh();
+			sensor();
 			curtab = "tab-content1";
 			setMainHeight(curtab);
 	});
@@ -1505,6 +1539,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	refresh();
 	wifi(0) ;
 	hardware(0);
+	sensor(0);
 	autostart();
 	atheme();
 	checkversion(); 

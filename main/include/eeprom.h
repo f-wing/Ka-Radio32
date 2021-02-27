@@ -88,6 +88,8 @@ struct device_settings {
 	char hostname[HOSTLEN];
 	uint32_t tp_calx;
 	uint32_t tp_caly;
+	uint32_t switchonthres; //Switch on threshold for external sensor
+	uint32_t switchoffthres; // Switch off threshold for external sensor
 
 } Device_Settings;
 

@@ -146,7 +146,19 @@
 					<input type="button" value="Play"   onClick="instantPlay()">&nbsp;
 					<input type="button" value="Stop"  onClick="stopStation()">
 -->					
-					</p>					
+					</p>
+				<h1>Sensor control &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" value="Store Thresholds" onclick="storeSensorSettings()" /></h1>	
+				<p>
+					<input type="button" value="Read"  onClick="readSensorADC()"> &nbsp;&nbsp;  Current value: <span id="sadcvalue">0</span>
+				</p>
+				<p id="sw">
+					<span class="bold1" title="Switch on threshold in decimal"> Switch on threshold : </span><input type="text" id="switchonthres" onkeyup="switchonthresup(event)"> 
+					&nbsp;
+				</p>
+				<p id="sw">
+					<span class="bold1" title="Switch off threshold in decimal"> Switch off threshold : </span><input type="text" id="switchoffthres" onkeyup="switchoffthresup(event)"> 
+					&nbsp;
+				</p>
 				</div>
 				</li>
 				<li>

@@ -46,6 +46,7 @@ const char strsICY[]  = {"HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nCo
 const char strsWIFI[]  = {"HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nContent-Length:%d\r\n\r\n{\"ssid\":\"%s\",\"pasw\":\"%s\",\"ssid2\":\"%s\",\"pasw2\":\"%s\",\
 \"ip\":\"%s\",\"msk\":\"%s\",\"gw\":\"%s\",\"ip2\":\"%s\",\"msk2\":\"%s\",\"gw2\":\"%s\",\"ua\":\"%s\",\"dhcp\":\"%s\",\"dhcp2\":\"%s\",\"mac\":\"%s\"\
 ,\"host\":\"%s\",\"tzo\":\"%s\"}"};
+const char strsSENSOR[] = {"HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nContent-Length:%d\r\n\r\n{\"switchonthres\":\"%s\",\"switchoffthres\":\"%s\"}"};
 const char strsGSTAT[]  = {"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n{\"Name\":\"%s\",\"URL\":\"%s\",\"File\":\"%s\",\"Port\":\"%d\",\"ovol\":\"%d\"}"};
 
 static int8_t clientOvol = 0;
@@ -259,6 +260,14 @@ static void setOffsetVolume(void) {
 
 uint16_t getVolume() {
 	return (getIvol());
+}
+
+uint16_t getSwOnThres(){
+	return (1024);//TODO get value from g_device
+}
+
+uint16_t getSwOffThres(){
+	return (2048);//TODO get value from g_device
 }
 
 // Set the volume with increment vol
@@ -794,7 +803,73 @@ static void handlePOST(char* name, char* data, int data_size, int conn) {
 			}
 			return;
 		}
-	} else if(strcmp(name, "/wifi") == 0)
+	}else if (strcmp(name, "/sensor") == 0)
+	{
+		bool val = false;
+		uint16_t swonthres_uint16;
+		uint16_t swoffthres_uint16;
+		char swonthres[5]; 
+		char swoffthres[5];
+		changed = false;
+
+		if(data_size > 0) {
+			char valid[6];
+			if(getSParameterFromResponse(valid,6,"valid=", data, data_size))
+				if (strcmp(valid,"1")==0) val = true;
+
+			getSParameterFromResponse(swonthres,5,"switchonthres=", data, data_size);
+			getSParameterFromResponse(swoffthres,5,"switchoffthres=", data, data_size);
+
+			swonthres_uint16 = atoi(swonthres);
+			swoffthres_uint16 = atoi(swoffthres);
+
+			if (val) // if valid is set, store thresholds in eeprom
+			{
+				g_device->switchonthres = swonthres_uint16;
+				g_device->switchoffthres = swoffthres_uint16;
+				changed = true;
+				ESP_LOGD(TAG,"store switchonthres: %d",g_device->switchonthres);
+				ESP_LOGD(TAG,"store switchoffthres: %d",g_device->switchoffthres);
+				saveDeviceSettings(g_device);
+			}
+
+			sprintf(swonthres,"%d",g_device->switchonthres); //convert int to string 
+			sprintf(swoffthres,"%d",g_device->switchoffthres); //convert int to string
+
+			int json_length ;
+			json_length =40+strlen(swonthres)+strlen(swoffthres);//40 is for {"switch...""}, 2 is for json_length
+
+
+			char *buf = inmalloc( 73 + json_length ); //73 is for HTTP://
+			if (buf == NULL)
+			{
+				ESP_LOGE(TAG," %s malloc fails","post icy");
+				infree(buf);
+				respKo(conn);
+				return;
+			}
+			else
+			{
+				sprintf(buf, strsSENSOR,
+				json_length,
+				swonthres,swoffthres);
+				ESP_LOGD(TAG,"sensor Buf len:%d\n%s",strlen(buf),buf);
+				write(conn, buf, strlen(buf));
+	// 			if (val){
+	// 				// set current_ap to the first filled ssid
+	// 				ESP_LOGD(TAG,"audio_output_mode: %d",g_device->audio_output_mode);
+	// //				copyDeviceSettings();
+	// 				vTaskDelay(20);
+	// 				esp_restart();
+	// 			}
+				infree(buf);
+
+				return; 
+			}	
+		}
+	
+	
+	}else if(strcmp(name, "/wifi") == 0)
 	{
 		bool val = false;
 		char tmpip[16],tmpmsk[16],tmpgw[16];
@@ -986,6 +1061,43 @@ static void handlePOST(char* name, char* data, int data_size, int conn) {
 	} else if(strcmp(name, "/clear") == 0)
 	{
 		eeEraseStations();	//clear all stations
+	} else if(strcmp(name, "/readadc") == 0){
+		ESP_LOGD(TAG,"/readadc");
+
+	} else if (strcmp(name, "/setonthres") == 0){
+		if(data_size > 0){
+			char param[4];
+			int onthres;
+
+			if(getSParameterFromResponse(param,4,"onthres=", data, data_size)) {
+				if(param == NULL) { return; }
+				onthres = atoi(param);
+				if(onthres < 0 || onthres > 4095) { return; }
+				ESP_LOGD(TAG,"/onthres: %s num:%d", param, onthres);
+				g_device->switchonthres = onthres;
+				saveDeviceSettings(g_device);
+				respOk(conn,NULL);
+				return;
+			}			
+
+		}
+	} else if (strcmp(name, "/setoffthres") == 0){
+		if(data_size > 0){
+			char param[4];
+			int offthres;
+
+			if(getSParameterFromResponse(param,4,"offthres=", data, data_size)) {
+				if(param == NULL) { return; }
+				offthres = atoi(param);
+				if(offthres < 0 || offthres > 4095) { return; }
+				ESP_LOGD(TAG,"/offthres: %s num:%d", param, offthres);
+				g_device->switchonthres = offthres;
+				saveDeviceSettings(g_device);
+				respOk(conn,NULL);
+				return;
+			}			
+
+		}
 	}
 	respOk(conn,NULL);
 }

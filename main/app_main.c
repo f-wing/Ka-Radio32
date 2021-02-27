@@ -901,6 +901,8 @@ void app_main()
 			g_device->trace_level = ESP_LOG_ERROR; //default
 			g_device->vol = 100; //default
 			g_device->led_gpio = GPIO_NONE;
+			g_device->switchonthres = 111;
+			g_device->switchoffthres = 222;
 			saveDeviceSettings(g_device);			
 		} else
 			ESP_LOGE(TAG,"Device config restored");
