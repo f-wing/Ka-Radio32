@@ -47,6 +47,7 @@ const char strsWIFI[]  = {"HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nC
 \"ip\":\"%s\",\"msk\":\"%s\",\"gw\":\"%s\",\"ip2\":\"%s\",\"msk2\":\"%s\",\"gw2\":\"%s\",\"ua\":\"%s\",\"dhcp\":\"%s\",\"dhcp2\":\"%s\",\"mac\":\"%s\"\
 ,\"host\":\"%s\",\"tzo\":\"%s\"}"};
 const char strsSENSOR[] = {"HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nContent-Length:%d\r\n\r\n{\"switchonthres\":\"%s\",\"switchoffthres\":\"%s\"}"};
+const char strsSENSORADC[] = {"HTTP/1.1 200 OK\r\nContent-Type:application/json\r\nContent-Length:%d\r\n\r\n{\"ldr_sensor_adc\":\"%s\"}"};
 const char strsGSTAT[]  = {"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n{\"Name\":\"%s\",\"URL\":\"%s\",\"File\":\"%s\",\"Port\":\"%d\",\"ovol\":\"%d\"}"};
 
 static int8_t clientOvol = 0;
@@ -843,7 +844,7 @@ static void handlePOST(char* name, char* data, int data_size, int conn) {
 			char *buf = inmalloc( 73 + json_length ); //73 is for HTTP://
 			if (buf == NULL)
 			{
-				ESP_LOGE(TAG," %s malloc fails","post icy");
+				ESP_LOGE(TAG," %s malloc fails","sensor");
 				infree(buf);
 				respKo(conn);
 				return;
@@ -867,8 +868,39 @@ static void handlePOST(char* name, char* data, int data_size, int conn) {
 				return; 
 			}	
 		}
-	
-	
+		
+	}else if(strcmp(name, "/readadc") == 0){//ldr_sensor_adc
+		ESP_LOGD(TAG,"/readadc");
+		uint32_t ldr_sensor_adc = getLdrAdc();
+		char ldr_sensor_adc_c[5]; 
+		//if(data_size > 0) {
+			sprintf(ldr_sensor_adc_c,"%d",ldr_sensor_adc); //convert int to string 
+
+			int json_length ;
+			json_length =21+strlen(ldr_sensor_adc_c);//40 is for {"switch...""}, 2 is for json_length
+
+
+			char *buf = inmalloc( 73 + json_length ); //73 is for HTTP://
+			if (buf == NULL)
+			{
+				ESP_LOGE(TAG," %s malloc fails","readadc");
+				infree(buf);
+				respKo(conn);
+				return;
+			}
+			else
+			{
+				sprintf(buf, strsSENSORADC,
+				json_length,
+				ldr_sensor_adc_c);
+				ESP_LOGD(TAG,"sensoradc Buf len:%d\n%s",strlen(buf),buf);
+				write(conn, buf, strlen(buf));
+				infree(buf);
+
+				return; 
+			}	
+		//}
+
 	}else if(strcmp(name, "/wifi") == 0)
 	{
 		bool val = false;
@@ -1061,44 +1093,7 @@ static void handlePOST(char* name, char* data, int data_size, int conn) {
 	} else if(strcmp(name, "/clear") == 0)
 	{
 		eeEraseStations();	//clear all stations
-	} else if(strcmp(name, "/readadc") == 0){
-		ESP_LOGD(TAG,"/readadc");
-
-	} else if (strcmp(name, "/setonthres") == 0){
-		if(data_size > 0){
-			char param[4];
-			int onthres;
-
-			if(getSParameterFromResponse(param,4,"onthres=", data, data_size)) {
-				if(param == NULL) { return; }
-				onthres = atoi(param);
-				if(onthres < 0 || onthres > 4095) { return; }
-				ESP_LOGD(TAG,"/onthres: %s num:%d", param, onthres);
-				g_device->switchonthres = onthres;
-				saveDeviceSettings(g_device);
-				respOk(conn,NULL);
-				return;
-			}			
-
-		}
-	} else if (strcmp(name, "/setoffthres") == 0){
-		if(data_size > 0){
-			char param[4];
-			int offthres;
-
-			if(getSParameterFromResponse(param,4,"offthres=", data, data_size)) {
-				if(param == NULL) { return; }
-				offthres = atoi(param);
-				if(offthres < 0 || offthres > 4095) { return; }
-				ESP_LOGD(TAG,"/offthres: %s num:%d", param, offthres);
-				g_device->switchonthres = offthres;
-				saveDeviceSettings(g_device);
-				respOk(conn,NULL);
-				return;
-			}			
-
-		}
-	}
+	}  
 	respOk(conn,NULL);
 }
 

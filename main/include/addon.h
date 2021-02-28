@@ -115,4 +115,6 @@ int getBatPercent();
 void* getEncoder(int num);
 struct tm* getDt();
 
+uint32_t getLdrAdc(void);
+
 #endif

@@ -598,7 +598,7 @@ void gpio_get_ir_signal(gpio_num_t *ir)
 	close_partition(hardware_handle,hardware);		
 }
 
-void gpio_get_adc(adc1_channel_t  *channel, adc1_channel_t *chanbatt)
+void gpio_get_adc(adc1_channel_t  *channel, adc1_channel_t *chanbatt, adc1_channel_t *chanLDR)
 {
 	esp_err_t err;
 	nvs_handle hardware_handle;

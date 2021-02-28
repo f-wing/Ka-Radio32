@@ -108,6 +108,9 @@ void Screen(typeScreen st);
 void drawScreen();
 static void evtScreen(typelcmd value);
 
+// Variable for LDR sensor
+bool stationRunning = false; //prevents multiple calls of start/stop command
+
 Encoder_t* encoder0 = NULL;
 Encoder_t* encoder1 = NULL;
 Button_t* button0 = NULL;
@@ -552,15 +555,18 @@ static void toggletime()
 
 static adc1_channel_t  channel = GPIO_NONE;
 static adc1_channel_t  chanBat = GPIO_NONE;
+static adc1_channel_t  chanLDR = ADC1_CHANNEL_7; //GPIO_NUM_35 is ADC1CH7
+
 static bool inside = false;
 #define DEFAULT_VREF 1100								 																					  
 void adcInit()
 {
-	gpio_get_adc(&channel,&chanBat);	
-	ESP_LOGD(TAG,"ADC Channel: %i, %i",channel,chanBat);
-	if ((channel & chanBat) != GPIO_NONE)
+	gpio_get_adc(&channel,&chanBat,&chanLDR);	
+	ESP_LOGD(TAG,"ADC Channel: %i, %i, %i",channel,chanBat,chanLDR);
+	if ((channel & chanBat & chanLDR) != GPIO_NONE)
 	{
 		adc1_config_width(ADC_WIDTH_BIT_12);
+		if (chanLDR != GPIO_NONE){adc1_config_channel_atten(chanLDR, ADC_ATTEN_DB_11);} //11dB attenuation, so ADC can measure up to 3.9V
 		if (channel != GPIO_NONE){isAdcKeyboard =true; adc1_config_channel_atten(channel, ADC_ATTEN_DB_0);}
 		if (chanBat != GPIO_NONE)
 		{
@@ -701,6 +707,36 @@ void adcLoop() {
 		}
 	}
 }
+
+//-----------------------
+// LDR dependent control
+//-----------------------
+uint32_t getLdrAdc(void){
+	uint32_t voltage;
+	voltage = (adc1_get_raw(chanLDR)+adc1_get_raw(chanLDR)+adc1_get_raw(chanLDR)+adc1_get_raw(chanLDR))/4;
+	ESP_LOGD(TAG,"adc voltage: %d\n",voltage);
+	return voltage;
+}
+
+void adcLoopLDR(void){
+	uint32_t voltage;
+	voltage = (adc1_get_raw(chanLDR)+adc1_get_raw(chanLDR)+adc1_get_raw(chanLDR)+adc1_get_raw(chanLDR))/4;
+
+	if (voltage > g_device->switchonthres && stationRunning == false) // Turn on if light is detected
+	{
+		startStation();
+		stationRunning = true;
+		return;
+	}
+	if (voltage < g_device->switchoffthres && stationRunning == true) // Turn off in the dark
+	{
+		stopStation();
+		stationRunning = false;
+		return;
+	}
+	return;
+}
+
 
 //-----------------------
 // Compute the Joystick
@@ -1279,6 +1315,7 @@ void task_addon(void *pvParams)
 	while (1)
 	{
 		adcLoop();  // compute the adc keyboard and battery
+		adcLoopLDR(); // check light level and start/stop radio
 		periphLoop(); // compute the encoder the buttons and joysticks
 		irLoop();  // compute the ir		
 		touchLoop(); // compute the touch screen

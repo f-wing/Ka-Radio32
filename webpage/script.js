@@ -876,12 +876,19 @@ function stopStation() {
 	} catch(e){console.log("error"+e);}
 }
 function readSensorADC(){
-	try{
+//	try{
 		xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState == 4 && xhr.status == 200) {	//get adc value and display it
+				var arr = JSON.parse(xhr.responseText);
+//				var temp = arr["ldr_sensor_adc"];
+				document.getElementById("sadcvalue").textContent = arr["ldr_sensor_adc"];
+			}
+		}
 		xhr.open("POST","readadc",false);
 		xhr.setRequestHeader(content,ctype);
 		xhr.send();
-	} catch(e){console.log("error"+e);}
+//	} catch(e){console.log("error"+e);}
 }
 
 function saveSoundSettings() {
@@ -1466,6 +1473,7 @@ document.addEventListener("DOMContentLoaded", function() {
 			if (stchanged) stChanged();
 			refresh();
 			sensor();
+			readSensorADC();
 			curtab = "tab-content1";
 			setMainHeight(curtab);
 	});
